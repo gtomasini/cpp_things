@@ -1,0 +1,71 @@
+//see https://towardsdatascience.com/c-type-erasure-wrapping-any-type-7f8511634849
+
+#include <iostream>
+#include <memory>
+#include <vector>
+
+struct ObjectWrapper
+{
+    template <typename T>
+    ObjectWrapper(T&& obj) :
+            wrappedObject_ (std::make_shared<Wrapper<T>>(std::forward<T>(obj))) { }
+            
+    struct ObjectBase
+    {
+        virtual int operator()() const = 0;
+        virtual ~ObjectBase() {}
+    };
+  
+    template<typename T>
+    struct Wrapper : public ObjectBase
+    {
+        Wrapper(const T& t) :
+              wrappedObject_(t) {}
+    
+        int operator()() const override
+        {
+            return wrappedObject_();
+        }
+    
+        T wrappedObject_;
+    };
+  
+    int operator()() const
+    {
+        return (*wrappedObject_)();
+    }
+  
+    
+    std::shared_ptr<ObjectBase> wrappedObject_;
+};
+
+void PrintId(const ObjectWrapper& obj)
+{
+    std::cout << obj() << "\n";
+}
+
+int GetId()
+{
+  return 0;
+}
+
+struct Object1
+{
+  static constexpr int id = 1;
+  int operator()() const {return id;}
+};
+
+struct Object2
+{
+  static constexpr int id = 2;
+  int operator()() const {return id;}
+};
+
+int main()
+{
+  PrintId(ObjectWrapper(Object1()));
+  PrintId(ObjectWrapper(Object2()));
+  PrintId(ObjectWrapper(GetId));
+  PrintId(ObjectWrapper(+[](){ return 4;}));
+  PrintId(ObjectWrapper([i=1](){ return 4+i;}));
+}
